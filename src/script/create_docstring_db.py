@@ -5,6 +5,9 @@ DATABASE_NAME = os.path.join("..", "data", "docstring.db")
 
 
 def create_table():
+    db_dir = os.path.dirname(DATABASE_NAME)
+    os.makedirs(db_dir, exist_ok=True)
+
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
 
