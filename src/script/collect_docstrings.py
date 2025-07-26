@@ -22,7 +22,7 @@ def insert_docstring(
     cursor.execute(
         """
                    INSERT INTO docstrings (content, source_url, project_name, file_path, doc_type, object_name ,style)
-                   VALUES (?, ?, ?, ?, ?, ?)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)
                    """,
         (content, source_url, project_name,
          file_path, doc_type, object_name, style),
