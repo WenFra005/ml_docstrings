@@ -33,12 +33,16 @@ def insert_docstring(
 
 
 def extract_docstrings_from_file(file_path, project_name=None):
+    file_processed_count = 1
+    erros_count = 0
+
     try:
         with open(file_path, "r", encoding="utf-8") as file:
             tree = ast.parse(file.read(), filename=file_path)
     except Exception as e:
         print(f"Erro ao ler/parsear o arquivo {file_path}: {e}")
-        return
+        erros_count += 1
+        return (file_processed_count, erros_count)
 
     for node in ast.walk(tree):
         docstring_content = None
@@ -64,21 +68,29 @@ def extract_docstrings_from_file(file_path, project_name=None):
                 file_path, os.path.join(CLONED_REPO_DIR, project_name)
             )
             github_url = f"https://github.com/{project_name}/blob/main/{relative_path}"
-
-            insert_docstring(
-                content=docstring_content,
-                source_url=github_url,
-                project_name=project_name,
-                file_path=os.path.relpath(file_path, CLONED_REPO_DIR),
-                doc_type=doc_type,
-                object_name=obj_name,
-                style=None,
-            )
+            try:
+                insert_docstring(
+                    content=docstring_content,
+                    source_url=github_url,
+                    project_name=project_name,
+                    file_path=os.path.relpath(file_path, CLONED_REPO_DIR),
+                    doc_type=doc_type,
+                    object_name=obj_name,
+                    style=None,
+                )
+            except Exception as e:
+                print(
+                    f"Erro ao inserir docstring no banco de dados para o arquivo {file_path}: {e}")
+                erros_count += 1
+    return (file_processed_count, erros_count)
 
 
 def clone_and_extract_from_github(repo_info):
     repo_url = repo_info["url"]
     project_name = repo_info["name"]
+
+    repo_files_scanned = 0
+    repo_extraction_errors = 0
 
     print(f"Clonando o repositório {project_name} de {repo_url}...")
 
@@ -95,6 +107,7 @@ def clone_and_extract_from_github(repo_info):
             print(f"Repositório {project_name} atualizado com sucesso.")
         except Exception as e:
             print(f"Erro ao atualizar o repositório {project_name}: {e}")
+            return (0, 0)
     else:
         try:
             print(f"Clonando o repositório {project_name}...")
@@ -102,18 +115,18 @@ def clone_and_extract_from_github(repo_info):
             print(f"Repositório {project_name} clonado com sucesso.")
         except Exception as e:
             print(f"Erro ao clonar o repositório {project_name}: {e}")
-            return
+            return (0, 0)
 
     print(f"Extraindo docstrings do repositório {project_name}...")
     for root, _, files in os.walk(repo_dir):
         for file in files:
             if file.endswith(".py"):
                 file_path = os.path.join(root, file)
-                try:
-                    extract_docstrings_from_file(file_path, project_name)
-                except Exception as e:
-                    print(
-                        f"Erro ao extrair docstrings do arquivo {file_path}: {e}")
+                files_scanned_in_file, errors_in_file = extract_docstrings_from_file(
+                    file_path, project_name)
+                repo_files_scanned += files_scanned_in_file
+                repo_extraction_errors += errors_in_file
+
     print(f"Docstrings do repositório {project_name} extraídos com sucesso.")
 
     end_time_repo = time.time()
@@ -152,16 +165,45 @@ if __name__ == "__main__":
     ]
 
     print("Iniciando a coleta de docstrings dos repositórios do GitHub...")
+
+    global_start_time = time.time()
+
+    total_files_scanned = 0
+    total_extraction_errors = 0
+
     for repo_info in github_repos_to_collect:
-        clone_and_extract_from_github(repo_info)
+        repo_files_scanned, repo_extraction_erros = clone_and_extract_from_github(
+            repo_info)
+        total_files_scanned += repo_files_scanned
+        total_extraction_errors += repo_extraction_erros
+
+    global_end_time = time.time()
+    global_elapsed_time = global_end_time - global_start_time
 
     print("\nColeta de docstrings concluída.")
     print("Todos os docstrings foram inseridos no banco de dados.")
     print(f"Os repositórios clonados estão na pasta '{CLONED_REPO_DIR}'.")
 
+    print("\n--- Relatório de KPIs ---")
+    print(f"Tempo total de coleta: {global_elapsed_time:.2f} segundos")
+    print(f"Total de arquivos escaneados: {total_files_scanned}")
+    print(f"Total de erros de extração: {total_extraction_errors}")
+
+    conn = None
+    try:
+        conn = sqlite3.connect(DATABASE_NAME)
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM docstrings;")
+        total_docstrings_collected = cursor.fetchone()[0]
+        print(f"Total de docstrings coletados: {total_docstrings_collected}\n")
+    except Exception as e:
+        print(f"Erro ao conectar ao banco de dados: {e}\n")
+    finally:
+        if conn:
+            conn.close()
+
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
-
     cursor.execute("""
                 SELECT
                         id,
