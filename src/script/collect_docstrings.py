@@ -21,9 +21,9 @@ def insert_docstring(
     cursor = conn.cursor()
     cursor.execute(
         """
-            INSERT INTO docstrings (content, source_url, project_name, file_path, doc_type, style)
-            values (?, ?, ?, ?, ?, ?)
-        """,
+                   INSERT INTO docstrings (content, source_url, project_name, file_path, doc_type, object_name ,style)
+                   VALUES (?, ?, ?, ?, ?, ?)
+                   """,
         (content, source_url, project_name,
          file_path, doc_type, object_name, style),
     )
