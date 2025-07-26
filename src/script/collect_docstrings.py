@@ -1,6 +1,7 @@
 import ast
 import os
 import sqlite3
+import time
 
 from git import Repo
 
@@ -83,6 +84,8 @@ def clone_and_extract_from_github(repo_info):
 
     repo_dir = os.path.join(CLONED_REPO_DIR, project_name)
 
+    start_time_repo = time.time()
+
     if os.path.exists(repo_dir):
         print(f"Repositório {project_name} já clonado. Tentando fazer pull...")
         try:
@@ -112,6 +115,11 @@ def clone_and_extract_from_github(repo_info):
                     print(
                         f"Erro ao extrair docstrings do arquivo {file_path}: {e}")
     print(f"Docstrings do repositório {project_name} extraídos com sucesso.")
+
+    end_time_repo = time.time()
+    elapsed_time_repo = end_time_repo - start_time_repo
+    print(
+        f"Tempo total para processar o repositório {project_name}: {elapsed_time_repo:.2f} segundos\n")
 
 
 if __name__ == "__main__":
