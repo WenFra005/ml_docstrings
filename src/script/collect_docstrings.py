@@ -1,5 +1,6 @@
 import ast
 import os
+import shutil
 import sqlite3
 import time
 
@@ -142,6 +143,15 @@ def clone_and_extract_from_github(repo_info):
 
     end_time_repo = time.time()
     elapsed_time_repo = end_time_repo - start_time_repo
+
+    try:
+        if os.path.exists(repo_dir):
+            print(f"Deletando o repositório clonado {project_name}...")
+            shutil.rmtree(repo_dir)
+            print(f"Repositório {project_name} deletado com sucesso.\n")
+    except OSError as e:
+        print(f"Erro ao deletar o repositório {project_name}: {e}")
+
     print(
         f"Tempo total para processar o repositório {project_name}: {elapsed_time_repo:.2f} segundos")
 
@@ -162,7 +172,7 @@ if __name__ == "__main__":
             "name": "scikit-learn"},
         # Projetos Google-Style
         {"url": "https://github.com/google/yapf.git", "name": "yapf"},
-        {"url": "https://github.com/tensorflow/neural-structured-learning.git",  # LINK CORRIGIDO
+        {"url": "https://github.com/tensorflow/neural-structured-learning.git",
             "name": "neural-structured-learning"},
         {"url": "https://github.com/tensorflow/tensorflow.git", "name": "tensorflow"},
         {"url": "https://github.com/google/pytype.git", "name": "pytype"},
