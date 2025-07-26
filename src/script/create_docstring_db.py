@@ -26,3 +26,29 @@ def create_table():
     print(
         f"Banco de dados '{DATABASE_NAME}' e tabela 'docstrings' criados/verificados com sucesso."
     )
+
+
+def insert_docstring(
+    content,
+    source_url=None,
+    project_name=None,
+    file_path=None,
+    doc_type=None,
+    style=None,
+):
+    conn = sqlite3.connect(DATABASE_NAME)
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+                   INSERT INTO docstrings (content, source_url, project_name, file_path, doc_type, style)
+                   values (?, ?, ?, ?, ?, ?)
+                   """,
+        (content, source_url, project_name, file_path, doc_type, style),
+    )
+    conn.commit()
+    conn.close()
+
+
+if __name__ == "__main__":
+    create_table()
+    print("Tabela 'docstrings' criada com sucesso.")
