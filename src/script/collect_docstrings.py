@@ -5,6 +5,12 @@ import time
 
 from git import Repo
 
+# Constantes para formatação de saída
+LINE_WIDTH = 80
+DELIMITER_CHAR = "="
+DELIMITER_CHAR_LIGHT = "-"
+
+
 DATABASE_NAME = os.path.join("..", "data", "docstring.db")
 CLONED_REPO_DIR = os.path.join("..", "cloned_repos")
 
@@ -22,9 +28,9 @@ def insert_docstring(
     cursor = conn.cursor()
     cursor.execute(
         """
-                   INSERT INTO docstrings (content, source_url, project_name, file_path, doc_type, object_name ,style)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)
-                   """,
+        INSERT INTO docstrings (content, source_url, project_name, file_path, doc_type, object_name ,style)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
         (content, source_url, project_name,
          file_path, doc_type, object_name, style),
     )
@@ -41,7 +47,7 @@ def extract_docstrings_from_file(file_path, project_name=None):
             tree = ast.parse(file.read(), filename=file_path)
     except Exception as e:
         print(f"Erro ao ler/parsear o arquivo {file_path}: {e}")
-        erros_count += 1
+        erros_count = 1
         return (file_processed_count, erros_count)
 
     for node in ast.walk(tree):
@@ -68,6 +74,7 @@ def extract_docstrings_from_file(file_path, project_name=None):
                 file_path, os.path.join(CLONED_REPO_DIR, project_name)
             )
             github_url = f"https://github.com/{project_name}/blob/main/{relative_path}"
+
             try:
                 insert_docstring(
                     content=docstring_content,
@@ -81,7 +88,7 @@ def extract_docstrings_from_file(file_path, project_name=None):
             except Exception as e:
                 print(
                     f"Erro ao inserir docstring no banco de dados para o arquivo {file_path}: {e}")
-                erros_count += 1
+                erros_count = 1
     return (file_processed_count, erros_count)
 
 
@@ -91,6 +98,10 @@ def clone_and_extract_from_github(repo_info):
 
     repo_files_scanned = 0
     repo_extraction_errors = 0
+
+    print(f"\n{DELIMITER_CHAR_LIGHT * LINE_WIDTH}")
+    print(f"Iniciando Processamento: {project_name}".center(LINE_WIDTH))
+    print(f"{DELIMITER_CHAR_LIGHT * LINE_WIDTH}\n")
 
     print(f"Clonando o repositório {project_name} de {repo_url}...")
 
@@ -117,7 +128,7 @@ def clone_and_extract_from_github(repo_info):
             print(f"Erro ao clonar o repositório {project_name}: {e}")
             return (0, 0)
 
-    print(f"Extraindo docstrings do repositório {project_name}...")
+    print(f"\nExtraindo docstrings do repositório {project_name}...")
     for root, _, files in os.walk(repo_dir):
         for file in files:
             if file.endswith(".py"):
@@ -127,12 +138,16 @@ def clone_and_extract_from_github(repo_info):
                 repo_files_scanned += files_scanned_in_file
                 repo_extraction_errors += errors_in_file
 
-    print(f"Docstrings do repositório {project_name} extraídos com sucesso.")
+    print(f"\nDocstrings do repositório {project_name} extraídos com sucesso.")
 
     end_time_repo = time.time()
     elapsed_time_repo = end_time_repo - start_time_repo
     print(
-        f"Tempo total para processar o repositório {project_name}: {elapsed_time_repo:.2f} segundos\n")
+        f"Tempo total para processar o repositório {project_name}: {elapsed_time_repo:.2f} segundos")
+
+    print(f"\n{DELIMITER_CHAR_LIGHT * LINE_WIDTH}\n")
+
+    return (repo_files_scanned, repo_extraction_errors)
 
 
 if __name__ == "__main__":
@@ -147,7 +162,7 @@ if __name__ == "__main__":
             "name": "scikit-learn"},
         # Projetos Google-Style
         {"url": "https://github.com/google/yapf.git", "name": "yapf"},
-        {"url": "https://github.com/google/neural-structured-learning.git",
+        {"url": "https://github.com/tensorflow/neural-structured-learning.git",  # LINK CORRIGIDO
             "name": "neural-structured-learning"},
         {"url": "https://github.com/tensorflow/tensorflow.git", "name": "tensorflow"},
         {"url": "https://github.com/google/pytype.git", "name": "pytype"},
@@ -164,30 +179,46 @@ if __name__ == "__main__":
             "name": "python-project-template"},
     ]
 
-    print("Iniciando a coleta de docstrings dos repositórios do GitHub...")
-
+    print(DELIMITER_CHAR * LINE_WIDTH)
+    print("INICIANDO COLETOR DE DOCSTRINGS DO GITHUB".center(LINE_WIDTH))
+    print(DELIMITER_CHAR * LINE_WIDTH)
+    print("\n")
     global_start_time = time.time()
 
     total_files_scanned = 0
     total_extraction_errors = 0
 
+    db_dir = os.path.dirname(DATABASE_NAME)
+    os.makedirs(db_dir, exist_ok=True)
+
     for repo_info in github_repos_to_collect:
-        repo_files_scanned, repo_extraction_erros = clone_and_extract_from_github(
+        repo_files_scanned, repo_extraction_errors = clone_and_extract_from_github(
             repo_info)
         total_files_scanned += repo_files_scanned
-        total_extraction_errors += repo_extraction_erros
+        total_extraction_errors += repo_extraction_errors
 
     global_end_time = time.time()
     global_elapsed_time = global_end_time - global_start_time
 
-    print("\nColeta de docstrings concluída.")
-    print("Todos os docstrings foram inseridos no banco de dados.")
-    print(f"Os repositórios clonados estão na pasta '{CLONED_REPO_DIR}'.")
+    print(DELIMITER_CHAR * LINE_WIDTH)
+    print("COLETA DE DOCSTRINGS CONCLUÍDA".center(LINE_WIDTH))
+    print(DELIMITER_CHAR * LINE_WIDTH)
+    print("\n" * 2)
 
-    print("\n--- Relatório de KPIs ---")
-    print(f"Tempo total de coleta: {global_elapsed_time:.2f} segundos")
-    print(f"Total de arquivos escaneados: {total_files_scanned}")
-    print(f"Total de erros de extração: {total_extraction_errors}")
+    print(f"Os repositórios clonados estão na pasta '{CLONED_REPO_DIR}'.\n".center(
+        LINE_WIDTH))
+
+    print(DELIMITER_CHAR_LIGHT * LINE_WIDTH)
+    print("RELATÓRIO DE KPIS".center(LINE_WIDTH))
+    print(DELIMITER_CHAR_LIGHT * LINE_WIDTH)
+    print(f"Tempo total de coleta: {global_elapsed_time:.2f} segundos".center(
+        LINE_WIDTH))
+    print(
+        f"Total de arquivos escaneados: {total_files_scanned}".center(LINE_WIDTH))
+    print(
+        f"Total de erros de extração: {total_extraction_errors}".center(LINE_WIDTH))
+    print(DELIMITER_CHAR_LIGHT * LINE_WIDTH)
+    print("\n")
 
     conn = None
     try:
@@ -195,29 +226,37 @@ if __name__ == "__main__":
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM docstrings;")
         total_docstrings_collected = cursor.fetchone()[0]
-        print(f"Total de docstrings coletados: {total_docstrings_collected}\n")
+        print(f"Total de docstrings coletados no banco de dados: {total_docstrings_collected}\n".center(
+            LINE_WIDTH))
     except Exception as e:
-        print(f"Erro ao conectar ao banco de dados: {e}\n")
+        print(f"Erro ao consultar o número total de docstrings no banco de dados: {e}\n".center(
+            LINE_WIDTH))
     finally:
         if conn:
             conn.close()
 
+    print(DELIMITER_CHAR * LINE_WIDTH)
+    print("AMOSTRA DOS DADOS COLETADOS".center(LINE_WIDTH))
+    print(DELIMITER_CHAR * LINE_WIDTH)
+    print("\n")
+
     conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
     cursor.execute("""
-                SELECT
-                        id,
-                        content,
-                        project_name,
-                        file_path,
-                        doc_type,
-                        object_name,
-                        style
-                FROM docstrings
-                LIMIT 10;""")
-    print("\nExibindo os primeiros 10 docstrings coletados:")
+        SELECT
+            id,
+            content,
+            project_name,
+            file_path,
+            doc_type,
+            object_name,
+            style
+        FROM docstrings
+        LIMIT 10;""")
+    print("Exibindo os primeiros 10 docstrings coletados:")
     for row in cursor.fetchall():
         doc_id, content, project_name, file_path, doc_type, object_name, style = row
         print(f"ID: {doc_id}, Projeto: {project_name}, Arquivo: {file_path}, Tipo: {doc_type}, Objeto: {object_name}, Estilo: {style if style else 'Não rotulado'}")
         print(f"  Docstring: \"{content[:70]}...\"")
     conn.close()
+    print(f"\n{DELIMITER_CHAR * LINE_WIDTH}\n")
