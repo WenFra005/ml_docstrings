@@ -17,6 +17,7 @@ def create_table():
                        project_name TEXT,
                        file_path TEXT,
                        doc_type TEXT,
+                       object_name TEXT,
                        style TEXT
                        );
                     """
@@ -34,6 +35,7 @@ def insert_docstring(
     project_name=None,
     file_path=None,
     doc_type=None,
+    object_name=None,
     style=None,
 ):
     conn = sqlite3.connect(DATABASE_NAME)
@@ -43,7 +45,7 @@ def insert_docstring(
                    INSERT INTO docstrings (content, source_url, project_name, file_path, doc_type, style)
                    values (?, ?, ?, ?, ?, ?)
                    """,
-        (content, source_url, project_name, file_path, doc_type, style),
+        (content, source_url, project_name, file_path, doc_type, object_name, style),
     )
     conn.commit()
     conn.close()
