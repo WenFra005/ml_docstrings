@@ -9,7 +9,7 @@ from halo import Halo
 from tqdm import tqdm
 
 # Constantes para formatação de saída
-LINE_WIDTH = 80
+LINE_WIDTH = 120
 DELIMITER_CHAR = "="
 DELIMITER_CHAR_LIGHT = "-"
 
@@ -17,7 +17,22 @@ DELIMITER_CHAR_LIGHT = "-"
 DATABASE_NAME = os.path.join("..", "data", "docstring.db")
 CLONED_REPO_DIR = os.path.join("..", "cloned_repos")
 
+def time_format(seconds):
+    seconds = int(round(seconds))
+    minutes, seconds = divmod(seconds, 60)
+    hours, rest = divmod(seconds, 3600)
+    
+    parts = []
+    if hours:
+        parts.append(f"{hours} hora{'s' if hours > 1 else ''}")
+    if minutes:
+        parts.append(f"{minutes} minuto{'s' if minutes > 1 else ''}")
+    if seconds or not parts:
+        parts.append(f"{seconds} segundo{'s' if seconds > 1 else ''}")
+        
+    return " e ".join(parts)
 
+    
 def insert_docstring(
     content,
     source_url=None,
@@ -106,13 +121,12 @@ def clone_and_extract_from_github(repo_info):
     print(f"Iniciando Processamento: {project_name}".center(LINE_WIDTH))
     print(f"{DELIMITER_CHAR_LIGHT * LINE_WIDTH}\n")
 
-    print(f"Clonando o repositório {project_name} de {repo_url}...")
 
     repo_dir = os.path.join(CLONED_REPO_DIR, project_name)
 
     start_time_repo = time.time()
 
-    spinner = Halo(text=f"Clonando {project_name}...", spinner="dots")
+    spinner = Halo(text=f"\nClonando {project_name} de {repo_url}...\n", spinner="dots")
     spinner.start()
     
     if os.path.exists(repo_dir):
@@ -122,15 +136,19 @@ def clone_and_extract_from_github(repo_info):
             origin = repo.remotes.origin
             origin.pull()
             spinner.succeed(f"Repositório {project_name} atualizado com sucesso.")
+            print()
         except Exception as e:
             spinner.fail(f"Erro ao atualizar o repositório {project_name}: {e}")
+            print()
             return (0, 0)
     else:
         try:
             Repo.clone_from(repo_url, repo_dir)
             spinner.succeed(f"Repositório {project_name} clonado com sucesso.")
+            print()
         except Exception as e:
             spinner.succeed(f"Erro ao clonar o repositório {project_name}: {e}")
+            print()
             return (0, 0)
 
     py_files = []
@@ -145,11 +163,13 @@ def clone_and_extract_from_github(repo_info):
                     file_path, project_name)
                 repo_files_scanned += files_scanned_in_file
                 repo_extraction_errors += errors_in_file
+    
+    print()
 
     print(f"\nDocstrings do repositório {project_name} extraídos com sucesso.")
 
     end_time_repo = time.time()
-    elapsed_time_repo = end_time_repo - start_time_repo
+    formated_time = time_format(end_time_repo - start_time_repo)
 
     try:
         if os.path.exists(repo_dir):
@@ -159,8 +179,9 @@ def clone_and_extract_from_github(repo_info):
     except OSError as e:
         print(f"Erro ao deletar o repositório {project_name}: {e}")
 
+    
     print(
-        f"Tempo total para processar o repositório {project_name}: {elapsed_time_repo:.2f} segundos")
+        f"Tempo total para processar o repositório {project_name}: {formated_time}")
 
     print(f"\n{DELIMITER_CHAR_LIGHT * LINE_WIDTH}\n")
 
@@ -215,7 +236,7 @@ if __name__ == "__main__":
         total_extraction_errors += repo_extraction_errors
 
     global_end_time = time.time()
-    global_elapsed_time = global_end_time - global_start_time
+    global_formated_time = time_format(global_end_time - global_start_time)
 
     print(DELIMITER_CHAR * LINE_WIDTH)
     print("COLETA DE DOCSTRINGS CONCLUÍDA".center(LINE_WIDTH))
@@ -228,7 +249,7 @@ if __name__ == "__main__":
     print(DELIMITER_CHAR_LIGHT * LINE_WIDTH)
     print("RELATÓRIO DE KPIS".center(LINE_WIDTH))
     print(DELIMITER_CHAR_LIGHT * LINE_WIDTH)
-    print(f"Tempo total de coleta: {global_elapsed_time:.2f} segundos".center(
+    print(f"Tempo total de coleta: {global_formated_time}".center(
         LINE_WIDTH))
     print(
         f"Total de arquivos escaneados: {total_files_scanned}".center(LINE_WIDTH))
