@@ -6,7 +6,7 @@ import time
 
 from git import Repo
 from halo import Halo
-import tqdm
+from tqdm import tqdm
 
 # Constantes para formatação de saída
 LINE_WIDTH = 80
@@ -140,7 +140,7 @@ def clone_and_extract_from_github(repo_info):
             if file.endswith(".py"):
                 py_files.append(os.path.join(root, file))
                 
-    for file_path in tqdm.tqdm(py_files, desc=f"Processando arquivos em {project_name}", unit="file"):
+    for file_path in tqdm(py_files, desc=f"Processando arquivos em {project_name}", unit="file"):
                 files_scanned_in_file, errors_in_file = extract_docstrings_from_file(
                     file_path, project_name)
                 repo_files_scanned += files_scanned_in_file
