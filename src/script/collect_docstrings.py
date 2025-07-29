@@ -126,7 +126,7 @@ def clone_and_extract_from_github(repo_info):
 
     start_time_repo = time.time()
 
-    spinner = Halo(text=f"\nClonando {project_name} de {repo_url}...\n", spinner="dots")
+    spinner = Halo(text=f"Clonando {project_name} de {repo_url}...", spinner="dots")
     spinner.start()
     
     if os.path.exists(repo_dir):
@@ -166,21 +166,23 @@ def clone_and_extract_from_github(repo_info):
     
     print()
 
-    print(f"\nDocstrings do repositório {project_name} extraídos com sucesso.")
+    print(f"Docstrings do repositório {project_name} extraídos com sucesso.")
+    print()
 
     end_time_repo = time.time()
     formated_time = time_format(end_time_repo - start_time_repo)
 
-    spinner = Halo(text=f"\nDeletando o repositório clonado {project_name}...\n", spinner="dots")
+    spinner = Halo(text=f"Deletando o repositório clonado {project_name}...", spinner="dots")
     spinner.start()
     
     try:
         if os.path.exists(repo_dir):
             shutil.rmtree(repo_dir)
-            spinner.succeed(f"Repositório {project_name} deletado com sucesso.\n")
+            spinner.succeed(f"Repositório {project_name} deletado com sucesso.")
+            print()
     except OSError as e:
         spinner.fail(f"Erro ao deletar o repositório {project_name}: {e}")
-
+        print()
     
     print(
         f"Tempo total para processar o repositório {project_name}: {formated_time}")
