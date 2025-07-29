@@ -5,6 +5,8 @@ import sqlite3
 import time
 
 from git import Repo
+from halo import Halo
+import tqdm
 
 # Constantes para formatação de saída
 LINE_WIDTH = 80
@@ -110,30 +112,35 @@ def clone_and_extract_from_github(repo_info):
 
     start_time_repo = time.time()
 
+    spinner = Halo(text=f"Clonando {project_name}...", spinner="dots")
+    spinner.start()
+    
     if os.path.exists(repo_dir):
-        print(f"Repositório {project_name} já clonado. Tentando fazer pull...")
+        spinner.text = f"{project_name} já existe. Fazendo pull..."
         try:
             repo = Repo(repo_dir)
             origin = repo.remotes.origin
             origin.pull()
-            print(f"Repositório {project_name} atualizado com sucesso.")
+            spinner.succeed(f"Repositório {project_name} atualizado com sucesso.")
         except Exception as e:
-            print(f"Erro ao atualizar o repositório {project_name}: {e}")
+            spinner.fail(f"Erro ao atualizar o repositório {project_name}: {e}")
             return (0, 0)
     else:
         try:
-            print(f"Clonando o repositório {project_name}...")
             Repo.clone_from(repo_url, repo_dir)
-            print(f"Repositório {project_name} clonado com sucesso.")
+            spinner.succeed(f"Repositório {project_name} clonado com sucesso.")
         except Exception as e:
-            print(f"Erro ao clonar o repositório {project_name}: {e}")
+            spinner.succeed(f"Erro ao clonar o repositório {project_name}: {e}")
             return (0, 0)
 
-    print(f"\nExtraindo docstrings do repositório {project_name}...")
+    py_files = []
+    
     for root, _, files in os.walk(repo_dir):
         for file in files:
             if file.endswith(".py"):
-                file_path = os.path.join(root, file)
+                py_files.append(os.path.join(root, file))
+                
+    for file_path in tqdm.tqdm(py_files, desc=f"Processando arquivos em {project_name}", unit="file"):
                 files_scanned_in_file, errors_in_file = extract_docstrings_from_file(
                     file_path, project_name)
                 repo_files_scanned += files_scanned_in_file
