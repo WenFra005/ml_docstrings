@@ -3,6 +3,7 @@ import os
 import shutil
 import sqlite3
 import time
+import stat
 
 from git import Repo
 from halo import Halo
@@ -17,11 +18,20 @@ DELIMITER_CHAR_LIGHT = "-"
 DATABASE_NAME = os.path.join("..", "data", "docstring.db")
 CLONED_REPO_DIR = os.path.join("..", "cloned_repos")
 
+
+def handle_remove_readonly(func, path, exc_info):
+    try:
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+    except Exception as e:
+        print(f"Erro ao forçar remoção de {path}")
+
+
 def time_format(seconds):
     seconds = int(round(seconds))
     minutes, seconds = divmod(seconds, 60)
     hours, rest = divmod(seconds, 3600)
-    
+
     parts = []
     if hours:
         parts.append(f"{hours} hora{'s' if hours > 1 else ''}")
@@ -29,10 +39,10 @@ def time_format(seconds):
         parts.append(f"{minutes} minuto{'s' if minutes > 1 else ''}")
     if seconds or not parts:
         parts.append(f"{seconds} segundo{'s' if seconds > 1 else ''}")
-        
+
     return " e ".join(parts)
 
-    
+
 def insert_docstring(
     content,
     source_url=None,
@@ -121,24 +131,26 @@ def clone_and_extract_from_github(repo_info):
     print(f"Iniciando Processamento: {project_name}".center(LINE_WIDTH))
     print(f"{DELIMITER_CHAR_LIGHT * LINE_WIDTH}\n")
 
-
     repo_dir = os.path.join(CLONED_REPO_DIR, project_name)
 
     start_time_repo = time.time()
 
-    spinner = Halo(text=f"Clonando {project_name} de {repo_url}...", spinner="dots")
+    spinner = Halo(
+        text=f"Clonando {project_name} de {repo_url}...", spinner="dots")
     spinner.start()
-    
+
     if os.path.exists(repo_dir):
         spinner.text = f"{project_name} já existe. Fazendo pull..."
         try:
             repo = Repo(repo_dir)
             origin = repo.remotes.origin
             origin.pull()
-            spinner.succeed(f"Repositório {project_name} atualizado com sucesso.")
+            spinner.succeed(
+                f"Repositório {project_name} atualizado com sucesso.")
             print()
         except Exception as e:
-            spinner.fail(f"Erro ao atualizar o repositório {project_name}: {e}")
+            spinner.fail(
+                f"Erro ao atualizar o repositório {project_name}: {e}")
             print()
             return (0, 0)
     else:
@@ -147,23 +159,24 @@ def clone_and_extract_from_github(repo_info):
             spinner.succeed(f"Repositório {project_name} clonado com sucesso.")
             print()
         except Exception as e:
-            spinner.succeed(f"Erro ao clonar o repositório {project_name}: {e}")
+            spinner.succeed(
+                f"Erro ao clonar o repositório {project_name}: {e}")
             print()
             return (0, 0)
 
     py_files = []
-    
+
     for root, _, files in os.walk(repo_dir):
         for file in files:
             if file.endswith(".py"):
                 py_files.append(os.path.join(root, file))
-                
+
     for file_path in tqdm(py_files, desc=f"Processando arquivos em {project_name}", unit="file"):
-                files_scanned_in_file, errors_in_file = extract_docstrings_from_file(
-                    file_path, project_name)
-                repo_files_scanned += files_scanned_in_file
-                repo_extraction_errors += errors_in_file
-    
+        files_scanned_in_file, errors_in_file = extract_docstrings_from_file(
+            file_path, project_name)
+        repo_files_scanned += files_scanned_in_file
+        repo_extraction_errors += errors_in_file
+
     print()
 
     print(f"Docstrings do repositório {project_name} extraídos com sucesso.")
@@ -172,18 +185,19 @@ def clone_and_extract_from_github(repo_info):
     end_time_repo = time.time()
     formated_time = time_format(end_time_repo - start_time_repo)
 
-    spinner = Halo(text=f"Deletando o repositório clonado {project_name}...", spinner="dots")
-    spinner.start()
-    
     try:
         if os.path.exists(repo_dir):
-            shutil.rmtree(repo_dir)
-            spinner.succeed(f"Repositório {project_name} deletado com sucesso.")
+            spinner = Halo(
+                text=f"Deletando o repositório clonado {project_name}...", spinner="dots")
+            spinner.start()
+            shutil.rmtree(repo_dir, onerror=handle_remove_readonly)
+            spinner.succeed(
+                f"Repositório {project_name} deletado com sucesso.")
             print()
     except OSError as e:
         spinner.fail(f"Erro ao deletar o repositório {project_name}: {e}")
         print()
-    
+
     print(
         f"Tempo total para processar o repositório {project_name}: {formated_time}")
 
